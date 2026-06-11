@@ -1,0 +1,80 @@
+# =============================================================================
+# Default config for deid_svs.py
+# =============================================================================
+# Out of the box this matches what DSA-WSI-DeID removes by default *plus*
+# scrubs the label image (which DSA only removes if you flip
+# `always_redact_label = True`).  Edit any field below to tune behavior.
+# Run `python deid_svs.py --dump-config <path>` to regenerate this file.
+# =============================================================================
+
+images:
+  # The label image typically holds the printed slide barcode + handwriting
+  # — the highest-PHI surface on an SVS.  Removed by default.
+  remove_label: true
+
+  # The macro image is the low-res thumbnail of the whole slide including
+  # the label area.  Some institutions want this kept for tissue-area QC,
+  # others scrub it because it can include label edges.  Off by default.
+  remove_macro: false
+
+  # The thumbnail (small downsampled main image).  Doesn't usually contain
+  # PHI, kept by default.
+  remove_thumbnail: false
+
+  # If true (and remove_label is true), insert a synthetic black label
+  # image stamped with the new title text.  Useful so downstream tools
+  # that expect *some* label image still find one.
+  replace_label_with_title: true
+  title_label_min_width: 384       # pixels
+  title_label_bg: "#000000"
+  title_label_fg: "#ffffff"
+
+aperio_metadata:
+  # Aperio stores key=value pairs in TIFF ImageDescription, separated by '|'.
+  # Keys here are the bare Aperio keys (no "aperio." prefix).
+
+  # Replaced with the new title (see `naming` below).
+  replace_with_title:
+    - Filename
+    - ImageID
+    - Title
+
+  # Removed entirely.  Mirrors DSA defaults.
+  remove:
+    - DSR ID
+    - Time
+    - Time Zone
+    - User
+
+  # If a `Date` field is present (format MM/DD/YYYY), keep only the year:
+  # "07/14/2023" -> "01/01/2023".  Mirrors DSA.
+  redact_date_keep_year_only: true
+
+tiff_tags:
+  # Standard TIFF tag names (case-sensitive, must match tifftools.Tag).
+
+  # Removed if present.
+  remove:
+    - Copyright
+    - HostComputer
+
+  # Replaced with the new title.
+  replace_with_title:
+    - DocumentName
+    - NDPI_REFERENCE
+
+  # Overwrite the Software tag with a redaction marker.
+  replace_software: true
+
+  # DateTime is "YYYY:MM:DD HH:MM:SS" — keep year, zero month/day.
+  redact_datetime_keep_year_only: true
+
+naming:
+  # The "title" used to replace identifying fields.
+  # Available placeholders:
+  #   {stem} - input filename without extension (e.g. "TCGA-AB-1234")
+  #   {name} - input filename with extension
+  # Keep this stable across a study so you can match outputs back to inputs
+  # via your own ledger (NEVER store the mapping next to the deidentified
+  # files).
+  new_title_template: "{stem}"
